@@ -149,11 +149,11 @@ def export_frame_data(thresholds):
 def main():
     
     testFiles = ["test/000000000001.jpg",
-#                 "test/000000000002.jpg",
-#                 "test/000000000008.jpg",
-#                 "test/000000000009.jpg",
-#                 "test/000000000036.jpg",
-#                 "test/000000000038.jpg"
+                 "test/000000000002.jpg",
+                 "test/000000000008.jpg",
+                 "test/000000000009.jpg",
+                 "test/000000000036.jpg",
+                 "test/000000000038.jpg"
                  ]
     
     print(keras.backend.image_data_format())
