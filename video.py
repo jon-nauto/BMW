@@ -9,18 +9,13 @@ import os
 import numpy as np
 import cv2
 import keras.models
+import csv
 from keras.models import model_from_json
-#from keras.preprocessing.image import img_to_array
-#from scipy.misc import imread, imresize,imshow
-#import matplotlib.pyplot as plt
+
 import tensorflow as tf
 #from encrypt_model import AESCipher
 
 import hashlib
-#import os
-#import sys
-#import string
-#import random
 
 from Crypto import Random
 from Crypto.Cipher import AES
@@ -61,6 +56,9 @@ class AESCipher(object):
 KEY = '1234567890'
 cypher = AESCipher(KEY)
 scale = 0.017
+#down up left right cell smoke holding(not using) eyes_closed no_face no_seatbelt(not using)
+thresholds_master = np.array([.85,.6,.9,.8,.95,.8,1,.85,.9,1])
+agg_frame_data = []
 
 #needed for pyinstaller
 def resource_path(relative_path):
@@ -85,13 +83,12 @@ def open_model():
         print("attempting local folder path:", encrypted_json_path)
     loaded_model_json = decrypt_file(encrypted_json_path)
     
-    ############
+    ############This forces the use of nonencrypted files
 #    json_file = open('models/mobilenet_v1-channels_first.json','r')
 #    loaded_model_json = json_file.read()
 #    json_file.close()
     ############
-#    print('contents of JSON file')
-#    print(loaded_model_json)
+
     loaded_model = model_from_json(loaded_model_json)
     
     output_path = resource_path('models/encrypted/mobilenet_v1-channels_first_test.h5')
@@ -105,9 +102,9 @@ def open_model():
     with tf.gfile.GFile(output_path, 'wb') as f:
         f.write(h5_file_raw)
         f.close()
-	#load woeights into new model
+	#load weights into new model
     
-    ############
+    ############This forces the use of nonencrypted files
 #    output_path = resource_path('models/mobilenet_v1-channels_first.h5')
     ############
     
@@ -117,18 +114,36 @@ def open_model():
 
 	#compile and evaluate loaded model
     loaded_model.compile(loss='categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
-	#loss,accuracy = model.evaluate(X_test,y_test)
-	#print('loss:', loss)
-	#print('accuracy:', accuracy)
-#    ### If file exists, delete it ##
-#    if os.path.isfile(output_path):
-#        os.remove(output_path)
-#        print("Removed file at path: %s" % output_path)
-#    else:    ## Show an error ##
-#        print("Error: %s file not found" % output_path)
+
+    ### If file exists, delete it ##
+    if os.path.isfile(output_path):
+        os.remove(output_path)
+        print("Removed file at path: %s" % output_path)
+    else:    ## Show an error ##
+        print("Error: %s file not found" % output_path)
     graph = tf.get_default_graph()
 
     return loaded_model,graph 
+
+def process_frame(predictions, thresholds=thresholds_master):
+    if predictions.size != thresholds.size:
+        raise Exception("predictions.count=", predictions.count,", but thresholds.count=",thresholds.count)
+    results = predictions > thresholds
+    frame_data = {"results":results,"predictions":predictions}
+    print("frame_data=",frame_data)
+    agg_frame_data.append(frame_data)
+    
+def export_frame_data(thresholds):
+    print("agg_frame_data=",agg_frame_data)
+    csv_path = "csv.csv"
+    header = ["Down", "Up", "Left", "Right", "Cell", "Smoking", "Eyes Closed", "No Face"]
+    
+    with open (csv_path, 'wt', newline='') as f:
+        csv_writer = csv.writer(f)
+        csv_writer.writerow(header)
+        csv_writer.writerow(thresholds)
+        for frame_data in agg_frame_data:
+            csv_writer.writerow(frame_data["predictions"])
 
    
 def main():
@@ -144,16 +159,7 @@ def main():
     print(keras.backend.image_data_format())
     loaded_model,graph = open_model()
     cap = cv2.VideoCapture(resource_path('video.mp4'))
- #   cap = cv2.VideoCapture(0)
-
-#input_path = 'models/encrypted/mobilenet_v1-channels_first.h5.encrypted'
-#output_path = 'models/mobilenet_v1-channels_first_temp.h5'
-#
-#decrypt_str = decrypt_file(input_path)
-#
-#with tf.gfile.GFile(output_path, 'wb') as f:
-#    f.write(decrypt_str)
-#    f.close()
+#   cap = cv2.VideoCapture(0)
 
 
 
@@ -167,25 +173,26 @@ def main():
         print("Error opening video stream or file")
 
 #    while(True):
-    for videoPath in testFiles:
+    for videoPath in testFiles:#for using test images
     # Capture frame-by-frame
         if cap.isOpened():
 #            ret, frame = cap.read()
             
+            ##########for testing individual images
             ret = True
             frame = cv2.imread(resource_path(videoPath))
+            ##########
             image = frame
             if ret == True:
 
-                if frame.shape[1] <= 768:
+                if frame.shape[1] < 768:#if w<768 resize.  If w==768 
                     print("IF")
                     frame = cv2.resize(frame,(768,720))
-                else:
-                    print("ELSE")
+                elif frame.shape[1] != 768:#only adjust shape if size> 768 (ie from HD resolution)
+                    print("ELIF")
                     w = int(0.45*frame.shape[1])
                     h = 250
                     frame = frame[h:h+720,w:w+768]
-            #b=b-103.94, g=g-116.78,r=r-123.68
                 print("frame.shape=")
                 print(frame.shape)
                 #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -194,27 +201,18 @@ def main():
                 frame = frame.transpose((2,0,1))
                 
                 print(frame.shape)
-#                mean = np.array([103.94, 116.78, 123.68])
                 mean = np.array([103.94, 116.78, 123.68])
                 mean = mean[:, np.newaxis, np.newaxis]
                 frame = frame - mean
                 frame *= scale
-                print("pre")
-#                print(frame[0,:,:])
-#                bgr = frame[0,:,:] - meanBGR
-#                print('bgr=%s', str(bgr))
-#                bgrScaled = np.multiply(bgr, scale,dtype='float32')
-#                frame[0,:,:] = bgrScaled 
-##            frame[0] = np.subtract(frame[0],meanBGR)
-#                print("post")
-#                print(frame[0:,:])
             
                 
                 frame = np.expand_dims(frame,4)
                 frame = np.moveaxis(frame,-1,0)
                 print(frame.shape)
+                print('test')
                 prediction = loaded_model.predict(frame)
-                print (prediction)
+                print ('prediction=', prediction)
                 prediction = prediction[0,:,1]
                 for i, p in enumerate(prediction):
                     label = ''
@@ -235,9 +233,16 @@ def main():
                     else:
                         print(label,' = FALSE')
                 print (prediction)
-
+                prediction = np.delete(prediction,9)
+                prediction = np.delete(prediction,6)
+                print (prediction)
+                thresholds = np.delete(thresholds_master,9)
+                thresholds = np.delete(thresholds,6)
+                print(thresholds)
+                
+                process_frame(prediction, thresholds)
                 cv2.imshow('Image',image)
-
+                
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
             else:
@@ -245,7 +250,7 @@ def main():
                 break
         else:
             print("cap is !open")
-
+    export_frame_data(thresholds)
 # When everything done, release the capture
     cap.release()
     cv2.destroyAllWindows()
