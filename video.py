@@ -10,6 +10,7 @@ import numpy as np
 import cv2
 import keras.models
 import csv
+import json
 from keras.models import model_from_json
 
 import tensorflow as tf
@@ -91,7 +92,7 @@ def open_model():
 
     loaded_model = model_from_json(loaded_model_json)
     
-    output_path = resource_path('models/encrypted/mobilenet_v1-channels_first_test.h5')
+    output_path = resource_path('mobilenet_v1-channels_first_1.h5')
     
     encrypted_h5_path = resource_path('models/encrypted/mobilenet_v1-channels_first.h5.encrypted')
     if not tf.gfile.Exists(encrypted_h5_path):
@@ -130,12 +131,15 @@ def process_frame(predictions, thresholds=thresholds_master):
         raise Exception("predictions.count=", predictions.count,", but thresholds.count=",thresholds.count)
     results = predictions > thresholds
     frame_data = {"results":results,"predictions":predictions}
-    print("frame_data=",frame_data)
+#    print("frame_data=",frame_data)
     agg_frame_data.append(frame_data)
     
 def export_frame_data(thresholds):
-    print("agg_frame_data=",agg_frame_data)
-    csv_path = "csv.csv"
+#    print("agg_frame_data=",agg_frame_data)
+    path = get_video_source()
+    filename = os.path.basename(path)
+    base = os.path.splitext(filename)[0]
+    csv_path = base + ".csv"
     header = ["Down", "Up", "Left", "Right", "Cell", "Smoking", "Eyes Closed", "No Face"]
     
     with open (csv_path, 'wt', newline='') as f:
@@ -145,6 +149,18 @@ def export_frame_data(thresholds):
         for frame_data in agg_frame_data:
             csv_writer.writerow(frame_data["predictions"])
 
+def get_video_source():
+    config = 'config.json'
+    if tf.gfile.Exists(config):
+        with open(config, 'r') as f:
+            jsonDict = json.load(f)
+            path = jsonDict['file']
+            print(jsonDict)
+            if not tf.gfile.Exists(path) and path != 'camera':
+                path = 'video.mp4'
+    else:
+        path = 'video.mp4'
+    return path        
    
 def main():
     
@@ -158,8 +174,12 @@ def main():
     
     print(keras.backend.image_data_format())
     loaded_model,graph = open_model()
-    cap = cv2.VideoCapture(resource_path('video.mp4'))
-#   cap = cv2.VideoCapture(0)
+    path = get_video_source()
+    print("***", path)
+    if path == 'camera':
+        cap = cv2.VideoCapture(0)
+    else:
+        cap = cv2.VideoCapture(path)
 
 
 
@@ -172,17 +192,17 @@ def main():
     if (cap.isOpened()== False): 
         print("Error opening video stream or file")
 
-#    while(True):
-    for videoPath in testFiles:#for using test images
+    while(True):
+#    for videoPath in testFiles:#for using test images
     # Capture frame-by-frame
         if cap.isOpened():
-#            ret, frame = cap.read()
+            ret, frame = cap.read()
             
             ##########for testing individual images
-            ret = True
-            frame = cv2.imread(resource_path(videoPath))
+#            ret = True
+#            frame = cv2.imread(resource_path(videoPath))
             ##########
-            image = frame
+            
             if ret == True:
 
                 if frame.shape[1] < 768:#if w<768 resize.  If w==768 
@@ -195,6 +215,7 @@ def main():
                     frame = frame[h:h+720,w:w+768]
                 print("frame.shape=")
                 print(frame.shape)
+                image = frame
                 #gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             
                 frame = frame.astype(np.float64)
@@ -228,7 +249,7 @@ def main():
                     if i == 8:label = 'no_face'
                     if i == 9:label = 'no_seatbelt'
                     
-                    if p > .7:
+                    if p > thresholds_master[i]:
                         print(label,' = TRUE')
                     else:
                         print(label,' = FALSE')
