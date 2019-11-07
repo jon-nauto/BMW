@@ -29,14 +29,14 @@ class AESCipher(object):
 
     def __init__(self, _key):
         self.bs = 16
-        print('Using block size = %s' % self.bs)
+#        print('Using block size = %s' % self.bs)
         self.key = hashlib.sha256(_key.encode()).digest()
-        print('Hash of key="%s" is "%s"' % (_key, self.key))
+#        print('Hash of key="%s" is "%s"' % (_key, self.key))
 
     def encrypt(self, raw):
         raw = self._pad(raw)
         iv = Random.new().read(AES.block_size)
-        print('Iv: "%s"' % iv)
+#        print('Iv: "%s"' % iv)
         cipher = AES.new(self.key, AES.MODE_CBC, iv)
         return iv + cipher.encrypt(raw)
 
@@ -164,18 +164,18 @@ def get_video_source():
    
 def main():
     
-    testFiles = ["test/000000000001.jpg",
-                 "test/000000000002.jpg",
-                 "test/000000000008.jpg",
-                 "test/000000000009.jpg",
-                 "test/000000000036.jpg",
-                 "test/000000000038.jpg"
-                 ]
+#    testFiles = ["test/000000000001.jpg",
+#                 "test/000000000002.jpg",
+#                 "test/000000000008.jpg",
+#                 "test/000000000009.jpg",
+#                 "test/000000000036.jpg",
+#                 "test/000000000038.jpg"
+#                 ]
     
     print(keras.backend.image_data_format())
     loaded_model,graph = open_model()
     path = get_video_source()
-    print("***", path)
+    print("Video Path=", path)
     if path == 'camera':
         cap = cv2.VideoCapture(0)
     else:
@@ -231,7 +231,6 @@ def main():
                 frame = np.expand_dims(frame,4)
                 frame = np.moveaxis(frame,-1,0)
                 print(frame.shape)
-                print('test')
                 prediction = loaded_model.predict(frame)
                 print ('prediction=', prediction)
                 prediction = prediction[0,:,1]
@@ -253,7 +252,6 @@ def main():
                         print(label,' = TRUE')
                     else:
                         print(label,' = FALSE')
-                print (prediction)
                 prediction = np.delete(prediction,9)
                 prediction = np.delete(prediction,6)
                 print (prediction)
