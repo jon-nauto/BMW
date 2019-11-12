@@ -1,5 +1,16 @@
 {
-  "file": "videos/view_directions1.mp4",
-  "description": "put the filepath to a video file in the value for the file key.  To use the camera simply put camera",
-  "options": "view_directions1 view_directions2"
+  "description": "put the filepath to a video file in the value for the file key. Keys that end with '_options' give a description, hint or available values to use for the key above it",
+  "file": "videos\\view_directions2.mp4",
+  "file_options": "view_directions1.mp4, view_directions2.mp4, other video files",
+  "mode": "preprocessed",
+  "mode_options": "live, preprocessed, import_cvs",
+  "plot": true,
+  "plot_options": "true false",
+  "output_frames_loc": "output_frames",
+  "output_frames_loc_options": "output frame location path",
+  "gpu_id": 0,
+  "gpu_id_options": "setup gpu id when a gpu is available, default to position 0",
+  "skip": 5,
+  "skip_options": "show 1 frame every skip images. Default to 5."
+
 }

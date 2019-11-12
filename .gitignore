@@ -104,3 +104,6 @@ venv.bak/
 .mypy_cache/
 
 *.csv
+zip/
+test/
+*_tiled.avi
